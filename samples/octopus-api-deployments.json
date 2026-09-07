@@ -1,0 +1,26 @@
+{
+  "ItemType": "Deployment",
+  "TotalResults": 1,
+  "ItemsPerPage": 30,
+  "Items": [
+    {
+      "Id": "Deployments-4992",
+      "Name": "Deploy to Production",
+      "Created": "2020-05-15T17:07:47",
+      "ProjectId": "Projects-1",
+      "EnvironmentId": "Environments-1",
+      "ReleaseId": "Releases-10",
+      "TaskId": "ServerTasks-100",
+      "Comments": null,
+      "ForcePackageDownload": false,
+      "UseGuidedFailure": true,
+      "SpecificMachineIds": ["Machines-1", "Machines-2"],
+      "SkipActions": [],
+      "TenantId": null,
+      "Links": {
+        "Self": "/api/deployments/Deployments-4992",
+        "Release": "/api/releases/Releases-10"
+      }
+    }
+  ]
+}

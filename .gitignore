@@ -1,0 +1,3 @@
+*.csv
+!samples/*.csv
+!tests/fixtures/*.csv

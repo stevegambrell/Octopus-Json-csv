@@ -1,0 +1,52 @@
+{
+  "Deployments": {
+    "Deployment": [
+      {
+        "DeploymentId": "Deployments-1",
+        "DeploymentName": "Deploy to Dev",
+        "ProjectId": "Projects-1",
+        "ProjectName": "Web App",
+        "ProjectSlug": "web-app",
+        "TenantId": "",
+        "TenantName": "",
+        "ChannelId": "Channels-2",
+        "ChannelName": "Default",
+        "EnvironmentId": "Environments-1",
+        "EnvironmentName": "Dev",
+        "ReleaseId": "Releases-1",
+        "ReleaseVersion": "1.1.28",
+        "TaskId": "ServerTasks-421",
+        "TaskState": "Success",
+        "Created": "2018-06-20T13:44:17",
+        "QueueTime": "2018-06-20T13:44:17",
+        "StartTime": "2018-06-20T13:44:17",
+        "CompletedTime": "2018-06-20T13:44:41",
+        "DurationSeconds": "24",
+        "DeployedBy": "administrator"
+      },
+      {
+        "DeploymentId": "Deployments-2",
+        "DeploymentName": "Deploy to Production",
+        "ProjectId": "Projects-1",
+        "ProjectName": "Web App",
+        "ProjectSlug": "web-app",
+        "TenantId": "Tenants-1",
+        "TenantName": "Acme, \"West\"",
+        "ChannelId": "Channels-2",
+        "ChannelName": "Default",
+        "EnvironmentId": "Environments-2",
+        "EnvironmentName": "Production",
+        "ReleaseId": "Releases-2",
+        "ReleaseVersion": "1.1.28",
+        "TaskId": "ServerTasks-422",
+        "TaskState": "Success",
+        "Created": "2018-06-20T13:50:18",
+        "QueueTime": "2018-06-20T13:50:18",
+        "StartTime": "2018-06-20T13:50:18",
+        "CompletedTime": "2018-06-20T13:50:36",
+        "DurationSeconds": "18",
+        "DeployedBy": "administrator"
+      }
+    ]
+  }
+}
