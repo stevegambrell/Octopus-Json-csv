@@ -17,6 +17,10 @@
     scalars are joined with "; ". Arrays of objects are stored as compact JSON.
     Octopus HAL "Links" properties are omitted.
 
+    JSON with comments is accepted: // line comments, /* block comments */, and
+    trailing commas are removed before parsing. Text inside strings is left
+    unchanged, so URLs such as https://example.com stay intact.
+
 .PARAMETER InputPath
     Source JSON file.
 
@@ -107,6 +111,114 @@ function Get-JsonProperty {
     return , $property.Value
 }
 
+function ConvertTo-StrictJson {
+    param([string]$JsonText)
+
+    $chars = $JsonText.ToCharArray()
+    $length = $chars.Length
+    $builder = New-Object System.Text.StringBuilder $length
+    $inString = $false
+    $escape = $false
+    $i = 0
+
+    while ($i -lt $length) {
+        $c = $chars[$i]
+
+        if ($inString) {
+            [void]$builder.Append($c)
+            if ($escape) {
+                $escape = $false
+            }
+            elseif ($c -eq [char]0x5C) {
+                $escape = $true
+            }
+            elseif ($c -eq [char]0x22) {
+                $inString = $false
+            }
+            $i++
+            continue
+        }
+
+        if ($c -eq [char]0x22) {
+            $inString = $true
+            [void]$builder.Append($c)
+            $i++
+            continue
+        }
+
+        $next = if (($i + 1) -lt $length) { $chars[$i + 1] } else { [char]0 }
+
+        if ($c -eq [char]0x2F -and $next -eq [char]0x2F) {
+            $i += 2
+            while ($i -lt $length -and $chars[$i] -ne [char]0x0A -and $chars[$i] -ne [char]0x0D) {
+                $i++
+            }
+            continue
+        }
+
+        if ($c -eq [char]0x2F -and $next -eq [char]0x2A) {
+            $i += 2
+            while ($i -lt $length) {
+                if (($i + 1) -lt $length -and $chars[$i] -eq [char]0x2A -and $chars[$i + 1] -eq [char]0x2F) {
+                    $i += 2
+                    break
+                }
+                $i++
+            }
+            continue
+        }
+
+        if ($c -eq [char]0x2C) {
+            $j = $i + 1
+            $isTrailing = $false
+            while ($j -lt $length) {
+                $n = $chars[$j]
+                $n2 = if (($j + 1) -lt $length) { $chars[$j + 1] } else { [char]0 }
+
+                if ($n -eq [char]0x20 -or $n -eq [char]0x09 -or $n -eq [char]0x0A -or $n -eq [char]0x0D) {
+                    $j++
+                    continue
+                }
+
+                if ($n -eq [char]0x2F -and $n2 -eq [char]0x2F) {
+                    $j += 2
+                    while ($j -lt $length -and $chars[$j] -ne [char]0x0A -and $chars[$j] -ne [char]0x0D) {
+                        $j++
+                    }
+                    continue
+                }
+
+                if ($n -eq [char]0x2F -and $n2 -eq [char]0x2A) {
+                    $j += 2
+                    while ($j -lt $length) {
+                        if (($j + 1) -lt $length -and $chars[$j] -eq [char]0x2A -and $chars[$j + 1] -eq [char]0x2F) {
+                            $j += 2
+                            break
+                        }
+                        $j++
+                    }
+                    continue
+                }
+
+                if ($n -eq [char]0x7D -or $n -eq [char]0x5D) {
+                    $isTrailing = $true
+                }
+                break
+            }
+
+            if ($isTrailing) {
+                $i++
+                continue
+            }
+        }
+
+        [void]$builder.Append($c)
+        $i++
+    }
+
+    return $builder.ToString()
+}
+
 function ConvertFrom-JsonDocument {
     param([string]$JsonText)
 
@@ -114,19 +226,29 @@ function ConvertFrom-JsonDocument {
         throw 'JSON file is empty.'
     }
 
-    if ($PSVersionTable.PSVersion.Major -ge 6) {
-        return , ($JsonText | ConvertFrom-Json -Depth 100 -NoEnumerate)
+    $strictJson = ConvertTo-StrictJson -JsonText $JsonText
+    if ([string]::IsNullOrWhiteSpace($strictJson)) {
+        throw 'JSON file is empty after removing comments.'
     }
 
     try {
-        return , ($JsonText | ConvertFrom-Json)
+        if ($PSVersionTable.PSVersion.Major -ge 6) {
+            return , ($strictJson | ConvertFrom-Json -Depth 100 -NoEnumerate)
+        }
+        return , ($strictJson | ConvertFrom-Json)
     }
     catch {
-        Add-Type -AssemblyName System.Web.Extensions | Out-Null
-        $serializer = New-Object System.Web.Script.Serialization.JavaScriptSerializer
-        $serializer.MaxJsonLength = [int]::MaxValue
-        $serializer.RecursionLimit = 100
-        return , $serializer.DeserializeObject($JsonText)
+        $parseError = $_
+        try {
+            Add-Type -AssemblyName System.Web.Extensions | Out-Null
+            $serializer = New-Object System.Web.Script.Serialization.JavaScriptSerializer
+            $serializer.MaxJsonLength = [int]::MaxValue
+            $serializer.RecursionLimit = 100
+            return , $serializer.DeserializeObject($strictJson)
+        }
+        catch {
+            throw "Could not parse JSON. // and /* comments and trailing commas are stripped, but the file is still invalid. $($parseError.Exception.Message)"
+        }
     }
 }
 

@@ -169,6 +169,35 @@ Assert-CsvEqual -Name 'union-headers' -Json @'
     , @('2', '', 'Prod')
 )
 
+Assert-CsvEqual -Name 'jsonc-comments-and-urls' -Json @'
+{
+  "PaymentSettings": {
+    "PaymentGateways": {
+      // sandbox URL https://secure-test.worldpay.com/jsp/merchant/xml/paymentService.jsp
+      "Worldpay": {
+        "Enabled": false,
+        "ApiBaseUrl": "https://secure-test.worldpay.com/jsp/merchant/xml/paymentService.jsp",
+        //"ApiBaseUrl": "https://localhost:56581/api/WorldpayPayment/TestInitiateTransaction",
+        "PaymentMethods": {
+          /* The CardType must match the type column */
+          "VIS": {
+            "CardType": "Visa",
+            "IsPaymentMethod": true,
+          }
+        }
+      }
+    }
+  }
+}
+'@ -Headers @(
+    'PaymentSettings.PaymentGateways.Worldpay.Enabled'
+    'PaymentSettings.PaymentGateways.Worldpay.ApiBaseUrl'
+    'PaymentSettings.PaymentGateways.Worldpay.PaymentMethods.VIS.CardType'
+    'PaymentSettings.PaymentGateways.Worldpay.PaymentMethods.VIS.IsPaymentMethod'
+) -Rows @(
+    , @('False', 'https://secure-test.worldpay.com/jsp/merchant/xml/paymentService.jsp', 'Visa', 'True')
+)
+
 Assert-CsvEqual -Name 'object-array-cell' -Json @'
 [
   {
@@ -223,6 +252,23 @@ try {
     else {
         Write-Host 'FAIL sample-api-file'
         Write-Host $apiCsv
+        $failed++
+    }
+
+    $sampleJsonc = Join-Path $root 'samples/paymentsettings-comments.json'
+    & $converter -InputPath $sampleJsonc -OutputPath $sampleOut | Out-Null
+    $jsoncCsv = [System.IO.File]::ReadAllText($sampleOut) -replace "`r`n", "`n"
+    if (
+        $jsoncCsv.Contains('PaymentSettings.PaymentGateways.Worldpay.ApiBaseUrl') -and
+        $jsoncCsv.Contains('https://secure-test.worldpay.com/jsp/merchant/xml/paymentService.jsp') -and
+        -not $jsoncCsv.Contains('localhost:56581')
+    ) {
+        Write-Host 'PASS sample-jsonc-file'
+        $passed++
+    }
+    else {
+        Write-Host 'FAIL sample-jsonc-file'
+        Write-Host $jsoncCsv
         $failed++
     }
 }

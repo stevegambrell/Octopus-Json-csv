@@ -38,6 +38,8 @@ The converter turns each record into one CSV row. It recognises:
 
 Nested objects become columns named with dots (`Project.Name`). Arrays of scalars are joined with `"; "`. Arrays of objects are stored as compact JSON. Octopus HAL `Links` properties are skipped.
 
+JSON with comments is accepted (`//` line comments, `/* block comments */`, and trailing commas). Text inside strings is left unchanged, so URLs such as `https://example.com` are not treated as comments.
+
 ## Output format
 
 - Comma-separated
