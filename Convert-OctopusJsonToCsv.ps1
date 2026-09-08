@@ -60,6 +60,11 @@ $script:CsvHeaders = @(
     'Exclude'
 )
 
+$script:CollapsedSections = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+@('PaymentMethods', 'CountryMappings') | ForEach-Object {
+    [void]$script:CollapsedSections.Add($_)
+}
+
 $script:SkipLabelParents = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
 @('Args', 'WriteTo', 'AppSettings', 'PaymentGateways', 'PaymentMethods', 'CountryMappings', 'Items', 'Properties', 'Links') | ForEach-Object {
     [void]$script:SkipLabelParents.Add($_)
@@ -596,6 +601,13 @@ function Add-TemplateRows {
     )
 
     if (Test-JsonMap $Value) {
+        $leafName = if ($PathParts.Count -gt 0) { [string]$PathParts[$PathParts.Count - 1] } else { '' }
+        if ($leafName -and $script:CollapsedSections.Contains($leafName)) {
+            $jsonValue = ConvertTo-Json -InputObject $Value -Compress -Depth 100
+            [void]$Rows.Add((New-TemplateRow -PathParts $PathParts -Value $jsonValue -ProjectName $ProjectName -ProjectPrefix $ProjectPrefix -CommentMap $CommentMap))
+            return
+        }
+
         foreach ($name in @(Get-JsonPropertyNames $Value)) {
             if ($name -eq 'Links') {
                 continue
