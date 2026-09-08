@@ -146,6 +146,38 @@ Assert-CsvEqual -Name 'serilog-template' -Json @'
     )
 )
 
+Assert-CsvEqual -Name 'password-is-sensitive' -Json @'
+{
+  "Worldpay": {
+    "Password": "secret",
+    "MerchantCode": "abc"
+  }
+}
+'@ -Rows @(
+    , @(
+        'MyService.Worldpay.Password'
+        'Worldpay Password'
+        ''
+        'SingleLineText'
+        'Sensitive'
+        'secret'
+        'My Service'
+        'Worldpay:Password'
+        'FALSE'
+    )
+    , @(
+        'MyService.Worldpay.MerchantCode'
+        'Worldpay Merchant Code'
+        ''
+        'SingleLineText'
+        'string'
+        'abc'
+        'My Service'
+        'Worldpay:MerchantCode'
+        'FALSE'
+    )
+)
+
 Assert-CsvEqual -Name 'jsonc-ignores-setup-comments' -Json @'
 {
   "PaymentGateways": {

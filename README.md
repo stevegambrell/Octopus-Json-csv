@@ -37,7 +37,7 @@ Convert-OctopusJsonToCsv.bat appsettings.json appsettings.csv "My Service" MySer
 | Label | Humanised setting name, or a short `//` comment above the property |
 | HelpText | Second short `//` comment above the property, if present |
 | ControlType | `SingleLineText` |
-| Type | `string` |
+| Type | `Sensitive` when TemplateName contains `password`, otherwise `string` |
 | DefaultValue | Leaf JSON value |
 | Project | The `-Project` argument |
 | Variable | Colon path of the JSON keys (`AppSettings:Serilog:MinimumLevel`) |
