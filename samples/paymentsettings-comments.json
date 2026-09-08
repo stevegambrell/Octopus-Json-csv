@@ -1,0 +1,74 @@
+{
+        "PaymentSettings": {
+                "PaymentGateways": {
+                        // 1)   In 'index.html' the lightbox script tag must be added (it should exist there as a comment, so you'll just need to uncomment it).
+                        //
+                        // 2)   Set apiBaseUrl in config to the correct URL for the environment (for Development/QA the sandbox environment is likely correct: https://secure-test.worldpay.com/jsp/merchant/xml/paymentService.jsp)
+                        //"ApiBaseUrl": "https://localhost:56581/api/WorldpayPayment/TestInitiateTransaction",
+                        "Worldpay": {
+                                "Enabled": false,
+                                "InstallationId": "[Installation ID]",
+                                "MerchantCode": "[Merchant ID]",
+                                "Password": "[Password]",
+                                "Currency": "GBP",
+                                // Specifies the Transport Layer Security (TLS) 1.2 security protocol
+                                "SecurityProtocolType": 3072,
+                                "PaymentServiceOrderDescription": "Telephony services",
+                                "ApiBaseUrl": "https://secure-test.worldpay.com/jsp/merchant/xml/paymentService.jsp",
+                                "ResultBaseUrl": "https://[domain name or public ip address]/payments/worldpay-result?",
+                                "WebhookBaseUrl": "",
+                                "TokenBaseUrl": "https://try.access.worldpay.com/tokens/",
+                                "MaximumRegisteredCards": 4,
+                                "PaymentMethods": {
+                                        "VIS": {
+                                                "CardType": "Visa",
+                                                "IsPaymentMethod": true
+                                        },
+                                        "PAP": {
+                                                "CardType": "PayPal",
+                                                "IsPaymentMethod": false,
+                                                "CreditReason": "PayPal Payment",
+                                                "ErrorReason": "PayPal payment failed"
+                                        }
+                                },
+                                "CountryMappings": {
+                                        "France": "FRA",
+                                        "Germany": "DEU"
+                                }
+                        },
+                        // Production scriptUrl https://pay.datatrans.com/upp/payment/js/datatrans-2.0.0.js
+                        "Datatrans": {
+                                "Enabled": false,
+                                "MerchantId": "[Merchant ID]",
+                                "Password": "[Password]",
+                                "Currency": "CHF",
+                                "ApiBaseUrl": "https://api.sandbox.datatrans.com",
+                                "ResultBaseUrl": "https://example.invalid/payments/datatrans-result?",
+                                "WebhookBaseUrl": "https://example.invalid/api/DatatransPayment/CompleteTransaction",
+                                "MaximumRegisteredCards": 4,
+                                "PaymentMethods": {
+                                        "VIS": {
+                                                "CardType": "Visa",
+                                                "IsPaymentMethod": true
+                                        }
+                                }
+                        },
+                        // Set "profile" to be NORMAL or LOW
+                        "SagePay": {
+                                "Enabled": false,
+                                "MerchantId": "[Merchant ID]",
+                                "Currency": "GBP",
+                                "StartUrl": "https://test.sagepay.com/gateway/service/vspserver-register.vsp",
+                                "Profile": "NORMAL",
+                                "GiftAid": 0,
+                                "ApplyAvsCv2": 0,
+                                "PaymentMethods": {
+                                        "VIS": {
+                                                "CardType": "Visa",
+                                                "IsPaymentMethod": true
+                                        }
+                                }
+                        }
+                }
+        }
+}
