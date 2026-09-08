@@ -577,7 +577,7 @@ function New-TemplateRow {
         Label        = $label
         HelpText     = $helpText
         ControlType  = 'SingleLineText'
-        Type         = 'string'
+        Type         = if ($templateName -match 'password') { 'Sensitive' } else { 'string' }
         DefaultValue = (ConvertTo-DefaultValueText $Value)
         Project      = $ProjectName
         Variable     = ($PathParts -join ':')
