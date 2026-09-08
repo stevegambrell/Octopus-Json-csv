@@ -9,9 +9,8 @@
         TemplateName, Label, HelpText, ControlType, Type, DefaultValue,
         Project, Variable, Exclude
 
-    TemplateName is the dotted JSON path. Variable is the same path with
-    colons, without the project prefix. Project is the humanised root key
-    (MNOMediationService -> "MNO Mediation Service").
+    TemplateName is Prefix plus the dotted JSON path. Variable is the JSON
+    path with colons. Project and Prefix are always supplied by the caller.
 
     Every field is comma-separated and wrapped in double quotes. Embedded
     quotes are escaped by doubling them.
@@ -23,11 +22,13 @@
     Destination CSV file path.
 
 .PARAMETER Project
-    Optional project display name. When omitted, the name is taken from a
-    single root object key.
+    Project display name written to the Project column.
+
+.PARAMETER Prefix
+    Prefix prepended to TemplateName (for example MyService).
 
 .EXAMPLE
-    .\Convert-OctopusJsonToCsv.ps1 '.\appsettings.json' '.\appsettings.csv'
+    .\Convert-OctopusJsonToCsv.ps1 '.\appsettings.json' '.\appsettings.csv' -Project 'My Service' -Prefix 'MyService'
 #>
 [CmdletBinding()]
 param(
@@ -37,7 +38,11 @@ param(
     [Parameter(Mandatory = $true, Position = 1)]
     [string]$OutputPath,
 
-    [string]$Project
+    [Parameter(Mandatory = $true, Position = 2)]
+    [string]$Project,
+
+    [Parameter(Mandatory = $true, Position = 3)]
+    [string]$Prefix
 )
 
 Set-StrictMode -Version Latest
@@ -492,16 +497,6 @@ function ConvertTo-HumanWords {
         }) -join ' '
 }
 
-function ConvertTo-ProjectPrefix {
-    param([string]$ProjectName)
-
-    if ([string]::IsNullOrWhiteSpace($ProjectName)) {
-        return ''
-    }
-
-    return ($ProjectName -replace '\s', '')
-}
-
 function Get-GeneratedLabel {
     param([string[]]$PathParts)
 
@@ -527,9 +522,6 @@ function Get-GeneratedLabel {
         $parent = [string]$PathParts[$i]
         if ($script:SkipLabelParents.Contains($parent)) {
             continue
-        }
-        if ($i -eq 0) {
-            break
         }
         return "$(ConvertTo-HumanWords $parent) $humanLeaf"
     }
@@ -565,21 +557,13 @@ function New-TemplateRow {
         $CommentMap
     )
 
-    $templateName = $PathParts -join '.'
-    $variableParts = $PathParts
-    if ($ProjectPrefix -and $PathParts.Count -gt 0 -and $PathParts[0] -eq $ProjectPrefix) {
-        if ($PathParts.Count -gt 1) {
-            $variableParts = $PathParts[1..($PathParts.Count - 1)]
-        }
-        else {
-            $variableParts = @()
-        }
-    }
+    $jsonPath = $PathParts -join '.'
+    $templateName = if ($jsonPath) { "$ProjectPrefix.$jsonPath" } else { $ProjectPrefix }
 
     $label = Get-GeneratedLabel -PathParts $PathParts
     $helpText = ''
-    if ($CommentMap -and $CommentMap.ContainsKey($templateName)) {
-        $comment = $CommentMap[$templateName]
+    if ($CommentMap -and $jsonPath -and $CommentMap.ContainsKey($jsonPath)) {
+        $comment = $CommentMap[$jsonPath]
         if ($comment.Label) {
             $label = [string]$comment.Label
         }
@@ -596,7 +580,7 @@ function New-TemplateRow {
         Type         = 'string'
         DefaultValue = (ConvertTo-DefaultValueText $Value)
         Project      = $ProjectName
-        Variable     = ($variableParts -join ':')
+        Variable     = ($PathParts -join ':')
         Exclude      = 'FALSE'
     }
 }
@@ -663,38 +647,8 @@ if (-not (Test-JsonMap $document) -and -not (Test-JsonList $document)) {
     throw 'JSON root must be an object or an array.'
 }
 
-$projectName = $Project
-$projectPrefix = ConvertTo-ProjectPrefix $projectName
-$walkRoot = $document
-$rootPath = @()
-
-if ((Test-JsonMap $document) -and -not $projectName) {
-    $rootNames = @(Get-JsonPropertyNames $document)
-    if ($rootNames.Count -eq 1) {
-        $only = [string]$rootNames[0]
-        $onlyValue = Get-JsonProperty $document $only
-        if (Test-JsonMap $onlyValue) {
-            $projectName = ConvertTo-HumanWords $only
-            $projectPrefix = $only
-        }
-    }
-}
-elseif ($projectName -and (Test-JsonMap $document)) {
-    $rootNames = @(Get-JsonPropertyNames $document)
-    if ($rootNames.Count -eq 1 -and [string]$rootNames[0] -eq $projectPrefix) {
-        $projectPrefix = [string]$rootNames[0]
-    }
-    elseif ($rootNames -notcontains $projectPrefix) {
-        $rootPath = @($projectPrefix)
-    }
-}
-
-if (-not $projectName) {
-    $projectName = ''
-}
-
 $rows = New-Object System.Collections.Generic.List[object]
-Add-TemplateRows -Value $walkRoot -PathParts $rootPath -Rows $rows -ProjectName $projectName -ProjectPrefix $projectPrefix -CommentMap $commentMap
+Add-TemplateRows -Value $document -PathParts @() -Rows $rows -ProjectName $Project -ProjectPrefix $Prefix -CommentMap $commentMap
 
 $outputDirectory = Split-Path -Parent $OutputPath
 if ($outputDirectory -and -not (Test-Path -LiteralPath $outputDirectory)) {

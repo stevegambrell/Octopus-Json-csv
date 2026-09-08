@@ -24,7 +24,8 @@ function Invoke-Converter {
     param(
         [string]$Json,
         [string]$Name,
-        [string]$Project
+        [string]$Project = 'My Service',
+        [string]$Prefix = 'MyService'
     )
 
     $temp = Join-Path ([System.IO.Path]::GetTempPath()) ("octopus-json-csv-" + [Guid]::NewGuid().ToString('n'))
@@ -33,12 +34,7 @@ function Invoke-Converter {
         $inputPath = Join-Path $temp "$Name.json"
         $outputPath = Join-Path $temp "$Name.csv"
         [System.IO.File]::WriteAllText($inputPath, $Json)
-        if ($Project) {
-            & $converter -InputPath $inputPath -OutputPath $outputPath -Project $Project | Out-Null
-        }
-        else {
-            & $converter -InputPath $inputPath -OutputPath $outputPath | Out-Null
-        }
+        & $converter -InputPath $inputPath -OutputPath $outputPath -Project $Project -Prefix $Prefix | Out-Null
         return [System.IO.File]::ReadAllText($outputPath)
     }
     finally {
@@ -51,7 +47,8 @@ function Assert-CsvEqual {
         [string]$Name,
         [string]$Json,
         [object[]]$Rows,
-        [string]$Project
+        [string]$Project = 'My Service',
+        [string]$Prefix = 'MyService'
     )
 
     $headers = @(
@@ -64,7 +61,7 @@ function Assert-CsvEqual {
         [void]$expectedLines.Add(((@($row) | ForEach-Object { ConvertTo-QuotedCsvField $_ }) -join ','))
     }
     $expected = ($expectedLines -join "`n") + "`n"
-    $actual = (Invoke-Converter -Json $Json -Name $Name -Project $Project) -replace "`r`n", "`n"
+    $actual = (Invoke-Converter -Json $Json -Name $Name -Project $Project -Prefix $Prefix) -replace "`r`n", "`n"
 
     if ($actual -eq $expected) {
         Write-Host "PASS $Name"
@@ -97,19 +94,17 @@ function Assert-Throws {
     }
 }
 
-Assert-CsvEqual -Name 'mno-serilog-template' -Json @'
+Assert-CsvEqual -Name 'serilog-template' -Json @'
 {
-  "MNOMediationService": {
-    "AppSettings": {
-      "Serilog": {
-        "MinimumLevel": "Information",
-        "WriteTo": {
-          "Args": {
-            // Serilog File Location
-            // Location of Logfiles
-            "path": "C:\\Digitalk\\Logs\\MNO Mediation Service\\logfile-.txt",
-            "retainedFileCountLimit": 365
-          }
+  "AppSettings": {
+    "Serilog": {
+      "MinimumLevel": "Information",
+      "WriteTo": {
+        "Args": {
+          // Serilog File Location
+          // Location of Logfiles
+          "path": "C:\\Logs\\logfile-.txt",
+          "retainedFileCountLimit": 365
         }
       }
     }
@@ -117,95 +112,71 @@ Assert-CsvEqual -Name 'mno-serilog-template' -Json @'
 }
 '@ -Rows @(
     , @(
-        'MNOMediationService.AppSettings.Serilog.MinimumLevel'
+        'MyService.AppSettings.Serilog.MinimumLevel'
         'Serilog Minimum Level'
         ''
         'SingleLineText'
         'string'
         'Information'
-        'MNO Mediation Service'
+        'My Service'
         'AppSettings:Serilog:MinimumLevel'
         'FALSE'
     )
     , @(
-        'MNOMediationService.AppSettings.Serilog.WriteTo.Args.path'
+        'MyService.AppSettings.Serilog.WriteTo.Args.path'
         'Serilog File Location'
         'Location of Logfiles'
         'SingleLineText'
         'string'
-        'C:\Digitalk\Logs\MNO Mediation Service\logfile-.txt'
-        'MNO Mediation Service'
+        'C:\Logs\logfile-.txt'
+        'My Service'
         'AppSettings:Serilog:WriteTo:Args:path'
         'FALSE'
     )
     , @(
-        'MNOMediationService.AppSettings.Serilog.WriteTo.Args.retainedFileCountLimit'
+        'MyService.AppSettings.Serilog.WriteTo.Args.retainedFileCountLimit'
         'Retained File Limit'
         ''
         'SingleLineText'
         'string'
         '365'
-        'MNO Mediation Service'
+        'My Service'
         'AppSettings:Serilog:WriteTo:Args:retainedFileCountLimit'
-        'FALSE'
-    )
-)
-
-Assert-CsvEqual -Name 'project-parameter' -Json @'
-{
-  "AppSettings": {
-    "Serilog": {
-      "MinimumLevel": "Information"
-    }
-  }
-}
-'@ -Project 'MNO Mediation Service' -Rows @(
-    , @(
-        'MNOMediationService.AppSettings.Serilog.MinimumLevel'
-        'Serilog Minimum Level'
-        ''
-        'SingleLineText'
-        'string'
-        'Information'
-        'MNO Mediation Service'
-        'AppSettings:Serilog:MinimumLevel'
         'FALSE'
     )
 )
 
 Assert-CsvEqual -Name 'jsonc-ignores-setup-comments' -Json @'
 {
-  "PaymentSettings": {
-    "PaymentGateways": {
-      // 1) In index.html uncomment the lightbox script
-      // Set apiBaseUrl to https://secure-test.worldpay.com/jsp/merchant/xml/paymentService.jsp
-      "Worldpay": {
-        "Enabled": false,
-        "ApiBaseUrl": "https://secure-test.worldpay.com/jsp/merchant/xml/paymentService.jsp"
-      }
+  "PaymentGateways": {
+    // 1) In index.html uncomment the lightbox script
+    // Set apiBaseUrl to https://secure-test.worldpay.com/jsp/merchant/xml/paymentService.jsp
+    "Worldpay": {
+      "Enabled": false,
+      "ApiBaseUrl": "https://secure-test.worldpay.com/jsp/merchant/xml/paymentService.jsp"
     }
   }
 }
 '@ -Rows @(
     , @(
-        'PaymentSettings.PaymentGateways.Worldpay.Enabled'
+        'MyService.PaymentGateways.Worldpay.Enabled'
         'Worldpay Enabled'
         ''
         'SingleLineText'
         'string'
         'False'
-        'Payment Settings'
+        'My Service'
         'PaymentGateways:Worldpay:Enabled'
         'FALSE'
     )
     , @(
-        'PaymentSettings.PaymentGateways.Worldpay.ApiBaseUrl'
+        'MyService.PaymentGateways.Worldpay.ApiBaseUrl'
         'Api Base Url'
         ''
         'SingleLineText'
         'string'
         'https://secure-test.worldpay.com/jsp/merchant/xml/paymentService.jsp'
-        'Payment Settings'
+        'My Service'
         'PaymentGateways:Worldpay:ApiBaseUrl'
         'FALSE'
     )
@@ -214,28 +185,28 @@ Assert-CsvEqual -Name 'jsonc-ignores-setup-comments' -Json @'
 $missingInput = Join-Path ([System.IO.Path]::GetTempPath()) 'missing-octopus.json'
 $missingOutput = Join-Path ([System.IO.Path]::GetTempPath()) 'missing-octopus.csv'
 Assert-Throws -Name 'missing-input' -Script {
-    & $converter -InputPath $missingInput -OutputPath $missingOutput
+    & $converter -InputPath $missingInput -OutputPath $missingOutput -Project 'My Service' -Prefix 'MyService'
 }
 
-$sample = Join-Path $root 'samples/mno-mediation-appsettings.json'
+$sample = Join-Path $root 'samples/appsettings.json'
 $sampleOut = Join-Path ([System.IO.Path]::GetTempPath()) ("octopus-sample-" + [Guid]::NewGuid().ToString('n') + '.csv')
 try {
-    & $converter -InputPath $sample -OutputPath $sampleOut | Out-Null
+    & $converter -InputPath $sample -OutputPath $sampleOut -Project 'My Service' -Prefix 'MyService' | Out-Null
     $sampleCsv = [System.IO.File]::ReadAllText($sampleOut) -replace "`r`n", "`n"
     $lines = $sampleCsv.TrimEnd("`n").Split("`n")
     if (
         $lines.Count -eq 4 -and
         $lines[0].StartsWith('"TemplateName","Label","HelpText"') -and
-        $lines[1].Contains('"Serilog Minimum Level"') -and
+        $lines[1].Contains('"MyService.AppSettings.Serilog.MinimumLevel"') -and
+        $lines[1].Contains('"My Service"') -and
         $lines[2].Contains('"Serilog File Location"') -and
-        $lines[2].Contains('"Location of Logfiles"') -and
         $lines[3].Contains('"Retained File Limit"')
     ) {
-        Write-Host 'PASS sample-mno-file'
+        Write-Host 'PASS sample-appsettings-file'
         $passed++
     }
     else {
-        Write-Host 'FAIL sample-mno-file'
+        Write-Host 'FAIL sample-appsettings-file'
         Write-Host $sampleCsv
         $failed++
     }

@@ -8,20 +8,16 @@ Converts nested JSON settings (for example `appsettings.json`) into a quoted CSV
 
 ## Usage
 
+Project name and template prefix are required:
+
 ```powershell
-.\Convert-OctopusJsonToCsv.ps1 '.\appsettings.json' '.\appsettings.csv'
+.\Convert-OctopusJsonToCsv.ps1 '.\appsettings.json' '.\appsettings.csv' -Project 'My Service' -Prefix 'MyService'
 ```
 
-Or pass the same two paths to `Convert-OctopusJsonToCsv.bat`:
+Or pass the same four arguments to `Convert-OctopusJsonToCsv.bat`:
 
 ```bat
-Convert-OctopusJsonToCsv.bat appsettings.json appsettings.csv
-```
-
-Optional project name, used when the JSON is not wrapped in a project key:
-
-```powershell
-.\Convert-OctopusJsonToCsv.ps1 '.\appsettings.json' '.\appsettings.csv' -Project 'MNO Mediation Service'
+Convert-OctopusJsonToCsv.bat appsettings.json appsettings.csv "My Service" MyService
 ```
 
 ### Parameters
@@ -30,20 +26,21 @@ Optional project name, used when the JSON is not wrapped in a project key:
 | --- | --- |
 | `-InputPath` (required) | Source JSON file |
 | `-OutputPath` (required) | Destination CSV file |
-| `-Project` | Optional project display name |
+| `-Project` (required) | Value written to the Project column |
+| `-Prefix` (required) | Prefix prepended to TemplateName |
 
 ## Output columns
 
 | Column | Source |
 | --- | --- |
-| TemplateName | Dotted JSON path, including the project key |
+| TemplateName | `Prefix` plus the dotted JSON path |
 | Label | Humanised setting name, or a short `//` comment above the property |
 | HelpText | Second short `//` comment above the property, if present |
 | ControlType | `SingleLineText` |
 | Type | `string` |
 | DefaultValue | Leaf JSON value |
-| Project | Humanised root key (`MNOMediationService` → `MNO Mediation Service`) |
-| Variable | Colon path without the project prefix (`AppSettings:Serilog:MinimumLevel`) |
+| Project | The `-Project` argument |
+| Variable | Colon path of the JSON keys (`AppSettings:Serilog:MinimumLevel`) |
 | Exclude | `FALSE` |
 
 JSON with comments is accepted (`//`, `/* */`, and trailing commas). URLs inside strings are left unchanged.
