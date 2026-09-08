@@ -178,6 +178,62 @@ Assert-CsvEqual -Name 'password-is-sensitive' -Json @'
     )
 )
 
+Assert-CsvEqual -Name 'collapsed-maps' -Json @'
+{
+  "Worldpay": {
+    "Enabled": false,
+    "PaymentMethods": {
+      "VIS": {
+        "CardType": "Visa",
+        "IsPaymentMethod": true
+      },
+      "ECA": {
+        "CardType": "Mastercard",
+        "IsPaymentMethod": true
+      }
+    },
+    "CountryMappings": {
+      "France": "FRA",
+      "Germany": "DEU"
+    }
+  }
+}
+'@ -Rows @(
+    , @(
+        'MyService.Worldpay.Enabled'
+        'Worldpay Enabled'
+        ''
+        'SingleLineText'
+        'string'
+        'False'
+        'My Service'
+        'Worldpay:Enabled'
+        'FALSE'
+    )
+    , @(
+        'MyService.Worldpay.PaymentMethods'
+        'Worldpay Payment Methods'
+        ''
+        'SingleLineText'
+        'string'
+        '{"VIS":{"CardType":"Visa","IsPaymentMethod":true},"ECA":{"CardType":"Mastercard","IsPaymentMethod":true}}'
+        'My Service'
+        'Worldpay:PaymentMethods'
+        'FALSE'
+    )
+    , @(
+        'MyService.Worldpay.CountryMappings'
+        'Worldpay Country Mappings'
+        ''
+        'SingleLineText'
+        'string'
+        '{"France":"FRA","Germany":"DEU"}'
+        'My Service'
+        'Worldpay:CountryMappings'
+        'FALSE'
+    )
+)
+
 Assert-CsvEqual -Name 'jsonc-ignores-setup-comments' -Json @'
 {
   "PaymentGateways": {
