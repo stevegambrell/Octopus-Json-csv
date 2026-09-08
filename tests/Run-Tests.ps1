@@ -23,7 +23,8 @@ function ConvertTo-QuotedCsvField {
 function Invoke-Converter {
     param(
         [string]$Json,
-        [string]$Name
+        [string]$Name,
+        [string]$Project
     )
 
     $temp = Join-Path ([System.IO.Path]::GetTempPath()) ("octopus-json-csv-" + [Guid]::NewGuid().ToString('n'))
@@ -32,7 +33,12 @@ function Invoke-Converter {
         $inputPath = Join-Path $temp "$Name.json"
         $outputPath = Join-Path $temp "$Name.csv"
         [System.IO.File]::WriteAllText($inputPath, $Json)
-        & $converter -InputPath $inputPath -OutputPath $outputPath | Out-Null
+        if ($Project) {
+            & $converter -InputPath $inputPath -OutputPath $outputPath -Project $Project | Out-Null
+        }
+        else {
+            & $converter -InputPath $inputPath -OutputPath $outputPath | Out-Null
+        }
         return [System.IO.File]::ReadAllText($outputPath)
     }
     finally {
@@ -44,17 +50,21 @@ function Assert-CsvEqual {
     param(
         [string]$Name,
         [string]$Json,
-        [string[]]$Headers,
-        [object[]]$Rows
+        [object[]]$Rows,
+        [string]$Project
     )
 
+    $headers = @(
+        'TemplateName', 'Label', 'HelpText', 'ControlType', 'Type',
+        'DefaultValue', 'Project', 'Variable', 'Exclude'
+    )
     $expectedLines = [System.Collections.Generic.List[string]]::new()
-    [void]$expectedLines.Add((($Headers | ForEach-Object { ConvertTo-QuotedCsvField $_ }) -join ','))
+    [void]$expectedLines.Add((($headers | ForEach-Object { ConvertTo-QuotedCsvField $_ }) -join ','))
     foreach ($row in $Rows) {
         [void]$expectedLines.Add(((@($row) | ForEach-Object { ConvertTo-QuotedCsvField $_ }) -join ','))
     }
     $expected = ($expectedLines -join "`n") + "`n"
-    $actual = (Invoke-Converter -Json $Json -Name $Name) -replace "`r`n", "`n"
+    $actual = (Invoke-Converter -Json $Json -Name $Name -Project $Project) -replace "`r`n", "`n"
 
     if ($actual -eq $expected) {
         Write-Host "PASS $Name"
@@ -87,128 +97,118 @@ function Assert-Throws {
     }
 }
 
-Assert-CsvEqual -Name 'reporting-feed' -Json @'
+Assert-CsvEqual -Name 'mno-serilog-template' -Json @'
 {
-  "Deployments": {
-    "Deployment": [
-      {
-        "DeploymentId": "Deployments-1",
-        "DeploymentName": "Deploy to Dev",
-        "ProjectName": "Web App",
-        "EnvironmentName": "Dev",
-        "DurationSeconds": "24"
-      },
-      {
-        "DeploymentId": "Deployments-2",
-        "DeploymentName": "Deploy to Production",
-        "ProjectName": "Web App",
-        "EnvironmentName": "Production",
-        "DurationSeconds": "18"
-      }
-    ]
-  }
-}
-'@ -Headers @('DeploymentId', 'DeploymentName', 'ProjectName', 'EnvironmentName', 'DurationSeconds') -Rows @(
-    , @('Deployments-1', 'Deploy to Dev', 'Web App', 'Dev', '24')
-    , @('Deployments-2', 'Deploy to Production', 'Web App', 'Production', '18')
-)
-
-Assert-CsvEqual -Name 'single-deployment-object' -Json @'
-{
-  "Deployments": {
-    "Deployment": {
-      "DeploymentId": "Deployments-1",
-      "ProjectName": "Web App"
-    }
-  }
-}
-'@ -Headers @('DeploymentId', 'ProjectName') -Rows @(
-    , @('Deployments-1', 'Web App')
-)
-
-Assert-CsvEqual -Name 'api-items' -Json @'
-{
-  "ItemType": "Deployment",
-  "Items": [
-    {
-      "Id": "Deployments-4992",
-      "Name": "Deploy to Production",
-      "ForcePackageDownload": false,
-      "UseGuidedFailure": true,
-      "Comments": null,
-      "SpecificMachineIds": ["Machines-1", "Machines-2"],
-      "SkipActions": [],
-      "Links": {
-        "Self": "/api/deployments/Deployments-4992"
-      }
-    }
-  ]
-}
-'@ -Headers @('Id', 'Name', 'ForcePackageDownload', 'UseGuidedFailure', 'Comments', 'SpecificMachineIds', 'SkipActions') -Rows @(
-    , @('Deployments-4992', 'Deploy to Production', 'False', 'True', '', 'Machines-1; Machines-2', '')
-)
-
-Assert-CsvEqual -Name 'nested-and-quotes' -Json @'
-[
-  {
-    "Project": { "Name": "Web, App", "Group": { "Name": "Orchestration" } },
-    "Note": "Said \"go\""
-  }
-]
-'@ -Headers @('Project.Name', 'Project.Group.Name', 'Note') -Rows @(
-    , @('Web, App', 'Orchestration', 'Said "go"')
-)
-
-Assert-CsvEqual -Name 'union-headers' -Json @'
-[
-  { "Id": "1", "Name": "A" },
-  { "Id": "2", "Environment": "Prod" }
-]
-'@ -Headers @('Id', 'Name', 'Environment') -Rows @(
-    , @('1', 'A', '')
-    , @('2', '', 'Prod')
-)
-
-Assert-CsvEqual -Name 'jsonc-comments-and-urls' -Json @'
-{
-  "PaymentSettings": {
-    "PaymentGateways": {
-      // sandbox URL https://secure-test.worldpay.com/jsp/merchant/xml/paymentService.jsp
-      "Worldpay": {
-        "Enabled": false,
-        "ApiBaseUrl": "https://secure-test.worldpay.com/jsp/merchant/xml/paymentService.jsp",
-        //"ApiBaseUrl": "https://localhost:56581/api/WorldpayPayment/TestInitiateTransaction",
-        "PaymentMethods": {
-          /* The CardType must match the type column */
-          "VIS": {
-            "CardType": "Visa",
-            "IsPaymentMethod": true,
+  "MNOMediationService": {
+    "AppSettings": {
+      "Serilog": {
+        "MinimumLevel": "Information",
+        "WriteTo": {
+          "Args": {
+            // Serilog File Location
+            // Location of Logfiles
+            "path": "C:\\Digitalk\\Logs\\MNO Mediation Service\\logfile-.txt",
+            "retainedFileCountLimit": 365
           }
         }
       }
     }
   }
 }
-'@ -Headers @(
-    'PaymentSettings.PaymentGateways.Worldpay.Enabled'
-    'PaymentSettings.PaymentGateways.Worldpay.ApiBaseUrl'
-    'PaymentSettings.PaymentGateways.Worldpay.PaymentMethods.VIS.CardType'
-    'PaymentSettings.PaymentGateways.Worldpay.PaymentMethods.VIS.IsPaymentMethod'
-) -Rows @(
-    , @('False', 'https://secure-test.worldpay.com/jsp/merchant/xml/paymentService.jsp', 'Visa', 'True')
+'@ -Rows @(
+    , @(
+        'MNOMediationService.AppSettings.Serilog.MinimumLevel'
+        'Serilog Minimum Level'
+        ''
+        'SingleLineText'
+        'string'
+        'Information'
+        'MNO Mediation Service'
+        'AppSettings:Serilog:MinimumLevel'
+        'FALSE'
+    )
+    , @(
+        'MNOMediationService.AppSettings.Serilog.WriteTo.Args.path'
+        'Serilog File Location'
+        'Location of Logfiles'
+        'SingleLineText'
+        'string'
+        'C:\Digitalk\Logs\MNO Mediation Service\logfile-.txt'
+        'MNO Mediation Service'
+        'AppSettings:Serilog:WriteTo:Args:path'
+        'FALSE'
+    )
+    , @(
+        'MNOMediationService.AppSettings.Serilog.WriteTo.Args.retainedFileCountLimit'
+        'Retained File Limit'
+        ''
+        'SingleLineText'
+        'string'
+        '365'
+        'MNO Mediation Service'
+        'AppSettings:Serilog:WriteTo:Args:retainedFileCountLimit'
+        'FALSE'
+    )
 )
 
-Assert-CsvEqual -Name 'object-array-cell' -Json @'
-[
-  {
-    "Id": "1",
-    "Packages": [
-      { "Name": "Acme.Web", "Version": "1.0.0" }
-    ]
+Assert-CsvEqual -Name 'project-parameter' -Json @'
+{
+  "AppSettings": {
+    "Serilog": {
+      "MinimumLevel": "Information"
+    }
   }
-]
-'@ -Headers @('Id', 'Packages') -Rows @(
-    , @('1', '[{"Name":"Acme.Web","Version":"1.0.0"}]')
+}
+'@ -Project 'MNO Mediation Service' -Rows @(
+    , @(
+        'MNOMediationService.AppSettings.Serilog.MinimumLevel'
+        'Serilog Minimum Level'
+        ''
+        'SingleLineText'
+        'string'
+        'Information'
+        'MNO Mediation Service'
+        'AppSettings:Serilog:MinimumLevel'
+        'FALSE'
+    )
+)
+
+Assert-CsvEqual -Name 'jsonc-ignores-setup-comments' -Json @'
+{
+  "PaymentSettings": {
+    "PaymentGateways": {
+      // 1) In index.html uncomment the lightbox script
+      // Set apiBaseUrl to https://secure-test.worldpay.com/jsp/merchant/xml/paymentService.jsp
+      "Worldpay": {
+        "Enabled": false,
+        "ApiBaseUrl": "https://secure-test.worldpay.com/jsp/merchant/xml/paymentService.jsp"
+      }
+    }
+  }
+}
+'@ -Rows @(
+    , @(
+        'PaymentSettings.PaymentGateways.Worldpay.Enabled'
+        'Worldpay Enabled'
+        ''
+        'SingleLineText'
+        'string'
+        'False'
+        'Payment Settings'
+        'PaymentGateways:Worldpay:Enabled'
+        'FALSE'
+    )
+    , @(
+        'PaymentSettings.PaymentGateways.Worldpay.ApiBaseUrl'
+        'Api Base Url'
+        ''
+        'SingleLineText'
+        'string'
+        'https://secure-test.worldpay.com/jsp/merchant/xml/paymentService.jsp'
+        'Payment Settings'
+        'PaymentGateways:Worldpay:ApiBaseUrl'
+        'FALSE'
+    )
 )
 
 $missingInput = Join-Path ([System.IO.Path]::GetTempPath()) 'missing-octopus.json'
@@ -217,58 +217,26 @@ Assert-Throws -Name 'missing-input' -Script {
     & $converter -InputPath $missingInput -OutputPath $missingOutput
 }
 
-$sampleReporting = Join-Path $root 'samples/octopus-reporting-deployments.json'
-$sampleApi = Join-Path $root 'samples/octopus-api-deployments.json'
+$sample = Join-Path $root 'samples/mno-mediation-appsettings.json'
 $sampleOut = Join-Path ([System.IO.Path]::GetTempPath()) ("octopus-sample-" + [Guid]::NewGuid().ToString('n') + '.csv')
 try {
-    & $converter -InputPath $sampleReporting -OutputPath $sampleOut | Out-Null
+    & $converter -InputPath $sample -OutputPath $sampleOut | Out-Null
     $sampleCsv = [System.IO.File]::ReadAllText($sampleOut) -replace "`r`n", "`n"
-    $sampleLines = $sampleCsv.TrimEnd("`n").Split("`n")
+    $lines = $sampleCsv.TrimEnd("`n").Split("`n")
     if (
-        $sampleLines.Count -eq 3 -and
-        $sampleLines[0].StartsWith('"DeploymentId","DeploymentName","ProjectId"') -and
-        $sampleLines[2].Contains('"Acme, ""West"""')
+        $lines.Count -eq 4 -and
+        $lines[0].StartsWith('"TemplateName","Label","HelpText"') -and
+        $lines[1].Contains('"Serilog Minimum Level"') -and
+        $lines[2].Contains('"Serilog File Location"') -and
+        $lines[2].Contains('"Location of Logfiles"') -and
+        $lines[3].Contains('"Retained File Limit"')
     ) {
-        Write-Host 'PASS sample-reporting-file'
+        Write-Host 'PASS sample-mno-file'
         $passed++
     }
     else {
-        Write-Host 'FAIL sample-reporting-file'
+        Write-Host 'FAIL sample-mno-file'
         Write-Host $sampleCsv
-        $failed++
-    }
-
-    & $converter -InputPath $sampleApi -OutputPath $sampleOut | Out-Null
-    $apiCsv = [System.IO.File]::ReadAllText($sampleOut) -replace "`r`n", "`n"
-    if (
-        $apiCsv.Contains('"Id","Name"') -and
-        -not $apiCsv.Contains('Links') -and
-        $apiCsv.Contains('Machines-1; Machines-2') -and
-        -not $apiCsv.Contains('"ItemType"')
-    ) {
-        Write-Host 'PASS sample-api-file'
-        $passed++
-    }
-    else {
-        Write-Host 'FAIL sample-api-file'
-        Write-Host $apiCsv
-        $failed++
-    }
-
-    $sampleJsonc = Join-Path $root 'samples/paymentsettings-comments.json'
-    & $converter -InputPath $sampleJsonc -OutputPath $sampleOut | Out-Null
-    $jsoncCsv = [System.IO.File]::ReadAllText($sampleOut) -replace "`r`n", "`n"
-    if (
-        $jsoncCsv.Contains('PaymentSettings.PaymentGateways.Worldpay.ApiBaseUrl') -and
-        $jsoncCsv.Contains('https://secure-test.worldpay.com/jsp/merchant/xml/paymentService.jsp') -and
-        -not $jsoncCsv.Contains('localhost:56581')
-    ) {
-        Write-Host 'PASS sample-jsonc-file'
-        $passed++
-    }
-    else {
-        Write-Host 'FAIL sample-jsonc-file'
-        Write-Host $jsoncCsv
         $failed++
     }
 }

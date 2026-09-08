@@ -1,0 +1,17 @@
+{
+  "MNOMediationService": {
+    "AppSettings": {
+      "Serilog": {
+        "MinimumLevel": "Information",
+        "WriteTo": {
+          "Args": {
+            // Serilog File Location
+            // Location of Logfiles
+            "path": "C:\\Digitalk\\Logs\\MNO Mediation Service\\logfile-.txt",
+            "retainedFileCountLimit": 365
+          }
+        }
+      }
+    }
+  }
+}

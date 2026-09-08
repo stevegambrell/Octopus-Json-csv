@@ -1,8 +1,6 @@
 # Octopus JSON to CSV
 
-Converts Octopus Deploy JSON into a quoted CSV file.
-
-Use this when you already have JSON from the Octopus REST API (or a JSON export of the reporting feed) and need a spreadsheet-ready CSV. The CSV format matches the earlier XML-to-CSV export: comma-separated, every field wrapped in double quotes, and embedded quotes escaped as `""`.
+Converts nested JSON settings (for example `appsettings.json`) into a quoted CSV of Octopus variable templates. The layout matches the XML-to-CSV export: one row per leaf setting.
 
 ## Requirements
 
@@ -11,13 +9,19 @@ Use this when you already have JSON from the Octopus REST API (or a JSON export 
 ## Usage
 
 ```powershell
-.\Convert-OctopusJsonToCsv.ps1 '.\deployments.json' 'D:\Octopus-Deployments.csv'
+.\Convert-OctopusJsonToCsv.ps1 '.\appsettings.json' '.\appsettings.csv'
 ```
 
 Or pass the same two paths to `Convert-OctopusJsonToCsv.bat`:
 
 ```bat
-Convert-OctopusJsonToCsv.bat deployments.json D:\Octopus-Deployments.csv
+Convert-OctopusJsonToCsv.bat appsettings.json appsettings.csv
+```
+
+Optional project name, used when the JSON is not wrapped in a project key:
+
+```powershell
+.\Convert-OctopusJsonToCsv.ps1 '.\appsettings.json' '.\appsettings.csv' -Project 'MNO Mediation Service'
 ```
 
 ### Parameters
@@ -26,19 +30,23 @@ Convert-OctopusJsonToCsv.bat deployments.json D:\Octopus-Deployments.csv
 | --- | --- |
 | `-InputPath` (required) | Source JSON file |
 | `-OutputPath` (required) | Destination CSV file |
+| `-Project` | Optional project display name |
 
-## JSON shapes
+## Output columns
 
-The converter turns each record into one CSV row. It recognises:
+| Column | Source |
+| --- | --- |
+| TemplateName | Dotted JSON path, including the project key |
+| Label | Humanised setting name, or a short `//` comment above the property |
+| HelpText | Second short `//` comment above the property, if present |
+| ControlType | `SingleLineText` |
+| Type | `string` |
+| DefaultValue | Leaf JSON value |
+| Project | Humanised root key (`MNOMediationService` → `MNO Mediation Service`) |
+| Variable | Colon path without the project prefix (`AppSettings:Serilog:MinimumLevel`) |
+| Exclude | `FALSE` |
 
-- A JSON array of objects
-- An Octopus API collection with an `Items` array
-- Reporting-style JSON such as `{ "Deployments": { "Deployment": [ ... ] } }`
-- A single object (one row)
-
-Nested objects become columns named with dots (`Project.Name`). Arrays of scalars are joined with `"; "`. Arrays of objects are stored as compact JSON. Octopus HAL `Links` properties are skipped.
-
-JSON with comments is accepted (`//` line comments, `/* block comments */`, and trailing commas). Text inside strings is left unchanged, so URLs such as `https://example.com` are not treated as comments.
+JSON with comments is accepted (`//`, `/* */`, and trailing commas). URLs inside strings are left unchanged.
 
 ## Output format
 
@@ -48,8 +56,6 @@ JSON with comments is accepted (`//` line comments, `/* block comments */`, and 
 - UTF-8 without a BOM
 
 ## Tests
-
-From PowerShell 7 (or Windows PowerShell):
 
 ```powershell
 pwsh -NoProfile -File .\tests\Run-Tests.ps1
