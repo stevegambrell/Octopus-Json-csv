@@ -195,7 +195,8 @@ Assert-CsvEqual -Name 'collapsed-maps' -Json @'
     "CountryMappings": {
       "France": "FRA",
       "Germany": "DEU"
-    }
+    },
+    "ISOSupportedLanguages": ["en-GB", "fr-FR"]
   }
 }
 '@ -Rows @(
@@ -230,6 +231,17 @@ Assert-CsvEqual -Name 'collapsed-maps' -Json @'
         '{"France":"FRA","Germany":"DEU"}'
         'My Service'
         'Worldpay:CountryMappings'
+        'FALSE'
+    )
+    , @(
+        'MyService.Worldpay.ISOSupportedLanguages'
+        'ISO Supported Languages'
+        ''
+        'SingleLineText'
+        'string'
+        '["en-GB","fr-FR"]'
+        'My Service'
+        'Worldpay:ISOSupportedLanguages'
         'FALSE'
     )
 )
